@@ -153,6 +153,11 @@ _Paste It after `/new` Command_
 
 
 async def new_cmd_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    # Limitng 1 Routine Per User
+    if rtable.count(q.id == user_id) != 0:
+        await update.message.reply_text(f"Delete Saved Routine First!!")
+        return ConversationHandler.END
     await update.message.reply_text("Paste the Routine Table:")
     return 1
 
@@ -181,7 +186,9 @@ async def cancel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def del_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Del Command")
+
+    rtable.remove(q.id == update.message.from_user.id)
+    await update.message.reply_text(f"Routine Deleted!!")
     return
 
 
