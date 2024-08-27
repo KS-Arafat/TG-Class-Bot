@@ -59,8 +59,7 @@ But before we run the script, we have to get Bot Token from Telegram
         2035864719:abcdeer12378fsd659labJDRSJjhGHDGJ5
 
 
-<div style="color: orange; font-weight: bold;">
-⚠️ Warning: Make sure to save your token in a secure place, treat it like a password and don't share it with anyone.</div>
+⚠️ **Warning: Make sure to save your token in a secure place, treat it like a password and don't share it with anyone.**
 
 #### Copy the Token and Paste In `.env` and assign it to `BOT_TOKEN` environment variable like this
 ```js
