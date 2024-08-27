@@ -11,6 +11,7 @@ from telegram.ext import (
     ConversationHandler,
 )
 from tinydb import TinyDB, Query
+import prettytable as pt
 
 
 # Constant
@@ -34,6 +35,8 @@ rtable: Final = TinyDB(DB_PATH).table("ROUTINE")
 
 # {"code": "CHE101","title": "General Chemistry"}
 ctable: Final = TinyDB(DB_PATH).table("COURSE")
+
+ptable = pt.PrettyTable(["Code", "Sec", "Day", "Starts", "Room", "Facu"])
 
 
 # Parse Raw string of rds Routine Data and make it list usable
@@ -193,7 +196,25 @@ async def del_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def show_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Show Command")
+    rdata = rtable.search(q.id == update.message.from_user.id)
+    if len(rdata) == 0:
+        await update.message.reply_text(f"No Routine Found For the User")
+        return
+
+    ptable.clear_rows()
+    for r in rdata:
+        ptable.add_row(
+            [
+                r["crs_code"],
+                r["sec"],
+                r["day"],
+                r["starts"],
+                r["room"],
+                r["faculty"],
+            ]
+        )
+
+    await update.message.reply_html(f"<i>Routine:</i>\n<pre>{ptable}</pre>")
     return
 
 
