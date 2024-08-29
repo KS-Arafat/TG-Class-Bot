@@ -12,6 +12,7 @@ from telegram.ext import (
 )
 from tinydb import TinyDB, Query
 import prettytable as pt
+from datetime import UTC, timedelta, datetime
 
 
 # Constant
@@ -35,6 +36,19 @@ rtable: Final = TinyDB(DB_PATH).table("ROUTINE")
 
 # {"code": "CHE101","title": "General Chemistry"}
 ctable: Final = TinyDB(DB_PATH).table("COURSE")
+
+# Day ShortHand according to RDS
+day_sh = {
+    "Sun": "S",
+    "Tue": "T",
+    "Mon": "M",
+    "Wed": "W",
+    "Thu": "R",
+    "Fri": "F",
+    "Sat": "A",
+}
+# Possible Day Pairs in RDS
+day_pairs = {"S": "ST", "T": "ST", "M": "MW", "W": "MW", "R": "RA", "A": "RA", "F": "F"}
 
 ptable = pt.PrettyTable(["Code", "Sec", "Day", "Starts", "Room", "Facu"])
 
@@ -145,6 +159,42 @@ def json_parse(prsd: list[list], uid: str):
     return routine, courses
 
 
+def get_day_classes(UID: str, today: bool):
+
+    if today == False:
+        dt = datetime.now(UTC) + timedelta(days=1, hours=6)
+    else:
+        dt = datetime.now(UTC) + timedelta(hours=6)
+
+    td = dt.strftime("%a")[:3]
+    if td == "Fri":
+        return []
+
+    sh = day_sh[td]
+    pairs = day_pairs[sh]
+
+    classes = rtable.search((q.id == UID) & ((q.day == pairs) | (q.day == sh)))
+    # print("Today: ", len(classes))
+    return classes
+
+
+def build_table(rtable):
+
+    ptable.clear_rows()
+    for r in rtable:
+        ptable.add_row(
+            [
+                r["crs_code"],
+                r["sec"],
+                r["day"],
+                r["starts"],
+                r["room"],
+                r["faculty"],
+            ]
+        )
+    return ptable
+
+
 async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_markdown_v2(
         """*__Welcome to NSU Class Notifier Bot__*
@@ -206,24 +256,15 @@ async def del_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.message.from_user.id
     rdata = rtable.search(q.id == str(uid))
+
     if len(rdata) == 0:
         await update.message.reply_text(f"No Routine Found For the User")
         return
 
-    ptable.clear_rows()
-    for r in rdata:
-        ptable.add_row(
-            [
-                r["crs_code"],
-                r["sec"],
-                r["day"],
-                r["starts"],
-                r["room"],
-                r["faculty"],
-            ]
-        )
-
-    await update.message.reply_html(f"<i>Routine:</i>\n<pre>{ptable}</pre>")
+    await update.message.reply_html(
+        f"""<u><b>Your Saved Routine</b></u>
+<pre>{build_table(rdata)}</pre>"""
+    )
     return
 
 
@@ -233,12 +274,33 @@ async def next_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def today_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Today Command")
+
+    uid = update.message.from_user.id
+
+    todays_class = get_day_classes(today=True, UID=str(uid))
+
+    if len(todays_class) != 0:
+        await update.message.reply_html(
+            f"""<u><b>Class List For Today</b></u>
+<pre>{build_table(todays_class)}</pre>"""
+        )
+    else:
+        await update.message.reply_markdown_v2("**No Classes Today**")
     return
 
 
 async def tmrw_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Tmrw Command")
+    uid = update.message.from_user.id
+
+    todays_class = get_day_classes(today=False, UID=str(uid))
+
+    if len(todays_class) != 0:
+        await update.message.reply_html(
+            f"""<u><b>Class List For Tomorrow</b></u>
+<pre>{build_table(todays_class)}</pre>"""
+        )
+    else:
+        await update.message.reply_markdown_v2("__No Classes Tomorrow__")
     return
 
 
