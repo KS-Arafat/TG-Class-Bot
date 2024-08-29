@@ -131,7 +131,7 @@ def json_parse(prsd: list[list], uid: str):
             continue
         routine.append(
             {
-                "id": uid,
+                "id": str(uid),
                 "crs_code": r[0],
                 "sec": r[1],
                 "day": r[3],
@@ -158,7 +158,7 @@ _Paste It after `/new` Command_
 async def new_cmd_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     # Limitng 1 Routine Per User
-    if rtable.count(q.id == user_id) != 0:
+    if rtable.count(q.id == str(user_id)) != 0:
         await update.message.reply_text(f"Delete Saved Routine First!!")
         return ConversationHandler.END
     await update.message.reply_text("Paste the Routine Table:")
@@ -172,14 +172,22 @@ async def new_cmd_content(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # print(routine_content)
 
     rl = routine_content.replace("\t", " ").split("\n")
+    len_rl = len(rl)
     rlf = [parse_crsec(r) for r in rl if r != ""]
+    len_rlf = len(rlf)
     rdata, cdata = json_parse(rlf, user_id)
 
-    rtable.insert_multiple(rdata)
+    len_table = len(rtable.insert_multiple(rdata))
     for c in cdata:
         ctable.upsert(c, q.code == c["code"])
 
-    await update.message.reply_text(f"Routine has been saved.")
+    await update.message.reply_markdown_v2(
+        f"""📜  *Routine has been saved*
+    🌟  Out of *_{len_rl}_* rows
+    🌟  *_{len_rlf}_* rows successfully formatted
+    🌟  *_{len_table}_* rows inserted to Database
+    """
+    )
     return ConversationHandler.END
 
 
@@ -189,14 +197,15 @@ async def cancel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def del_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    rtable.remove(q.id == update.message.from_user.id)
+    uid = update.message.from_user.id
+    rtable.remove(q.id == str(uid))
     await update.message.reply_text(f"Routine Deleted!!")
     return
 
 
 async def show_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    rdata = rtable.search(q.id == update.message.from_user.id)
+    uid = update.message.from_user.id
+    rdata = rtable.search(q.id == str(uid))
     if len(rdata) == 0:
         await update.message.reply_text(f"No Routine Found For the User")
         return
@@ -231,6 +240,15 @@ async def today_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def tmrw_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Tmrw Command")
     return
+
+
+async def dev_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_markdown_v2(update.message.text)
+    return
+
+
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print(f'Update "{update.message.text}"  \nError: {context.error}')
 
 
 async def post_init(application: Application) -> None:
@@ -269,5 +287,9 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("next", next_cmd))
     app.add_handler(CommandHandler("today", today_cmd))
     app.add_handler(CommandHandler("tmrw", tmrw_cmd))
+
+    # /dev for developer
+    app.add_handler(CommandHandler("dev", dev_cmd))
+    app.add_error_handler(error_handler)
 
     app.run_polling(poll_interval=3)
