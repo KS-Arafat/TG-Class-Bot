@@ -1,7 +1,7 @@
 from typing import Final
 import os
 from dotenv import load_dotenv
-from telegram import Update
+from telegram import Update, Animation
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -195,6 +195,67 @@ def build_table(rtable):
     return ptable
 
 
+# Converting 12 hour format to 24 hour format
+def exact_time_hour(tn: str):
+    h, m = [int(x) for x in tn[:5].split(":")]
+    et = h + (m / 60) + (12 if tn[5:] == "PM" else 0)
+    return et if et < 24 else et - 12
+
+
+# String format of hour
+def strf_hour(hours: float):
+    hi = int(hours)
+    hf = hours - hi
+    return f"{hi:02} Hours {int(hf*60):02} Minutes"
+
+
+def next_class(uid: str):
+
+    time_gmtp6 = datetime.now(UTC) + timedelta(hours=6)
+
+    tn = time_gmtp6.strftime("%I:%m%p")
+
+    # dev
+    # print(tn)
+    tn = "06:00AM"
+
+    exhour = exact_time_hour(tn)
+
+    # print("Test time: ", exhour)
+
+    clss = get_day_classes(uid, False)
+    if len(clss) == 0:
+        return "<b>No Classes Today</b>"
+    next_cls = ""
+    clssdiff = 0
+    temp = 24.0
+
+    for i in range(len(clss)):
+        clssi = clss[i]
+        diff = exact_time_hour(clssi["starts"]) - exhour
+
+        if temp > diff and diff >= 0:
+            temp = diff
+            next_cls = clssi
+            clssdiff = diff
+
+    # print(next_cls)
+    if next_cls == "":
+        return "<b>No More Class Today</b>"
+
+    course_title = ctable.search(q.code == next_cls["crs_code"])[0]["title"]
+
+    next_cls_detail = f"""<code>Next Class is After {strf_hour(clssdiff)}  </code>
+<pre>Title:    {course_title}
+Code:     {next_cls["crs_code"]}
+Room:     {next_cls["room"]}
+Faculty:  {next_cls["faculty"]}
+Time:     {next_cls["starts"]} - {next_cls["ends"]}
+Section:  {int(next_cls["sec"]):02}</pre>
+"""
+    return next_cls_detail
+
+
 async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_markdown_v2(
         """*__Welcome to NSU Class Notifier Bot__*
@@ -269,7 +330,9 @@ async def show_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def next_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Next Command")
+    uid = str(update.message.from_user.id)
+    await update.message.reply_html(next_class(uid))
+    # await update.message.reply_animation(animation=Animation())
     return
 
 
