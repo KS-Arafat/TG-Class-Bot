@@ -41,6 +41,8 @@ Download the [Zip](https://github.com/KS-Arafat/Class_Routine_TG_Bot/archive/ref
 
 ```bash
 cd Class_Routine_TG_Bot
+echo "" > Routine.json
+echo "" > Log.json
 echo 'BOT_TOKEN = ""' > .env
 pip install -r Requirement.txt
 ```
