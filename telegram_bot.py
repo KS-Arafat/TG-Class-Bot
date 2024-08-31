@@ -17,6 +17,7 @@ from datetime import UTC, timedelta, datetime
 
 # Constant
 DB_PATH: Final = "./Routine.json"
+LOG_PATH: Final = "./Log.json"
 
 # BOT_TOKEN
 load_dotenv()
@@ -36,6 +37,9 @@ rtable: Final = TinyDB(DB_PATH).table("ROUTINE")
 
 # {"code": "CHE101","title": "General Chemistry"}
 ctable: Final = TinyDB(DB_PATH).table("COURSE")
+
+# Log Table
+ltable: Final = TinyDB(LOG_PATH).table("NAME_ID_CMD")
 
 # Day ShortHand according to RDS
 day_sh = {
@@ -256,17 +260,35 @@ Section:  {int(next_cls["sec"]):02}</pre>
     return next_cls_detail
 
 
+def logging(cmmd: str, update: Update):
+    tn = datetime.now(UTC) + timedelta(hours=6)
+    ltable.insert(
+        {
+            "Time": tn.strftime("%d/%m/%Y, %I:%m %p"),
+            "Name": update.message.from_user.name,
+            "ID": update.message.from_user.id,
+            "CMD": cmmd,
+        }
+    )
+
+
 async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    logging("/start", update)
+    await update.message.reply_video("./TG_Bot_Demo.mp4")
     await update.message.reply_markdown_v2(
         """*__Welcome to NSU Class Notifier Bot__*
-_Copy Routine From RDS By Selecting the Whole Table_
+_Copy Routine From RDS Attendance By Selecting the Whole Table_
 _Paste It after `/new` Command_
+_If you copied from Phone📱 then chose *__Paste as plain text__* option_
 """
     )
     return
 
 
 async def new_cmd_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    logging("/new", update)
     user_id = update.message.from_user.id
     # Limitng 1 Routine Per User
     if rtable.count(q.id == str(user_id)) != 0:
@@ -303,11 +325,15 @@ async def new_cmd_content(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cancel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    logging("/cancel", update)
     await update.message.reply_text("Routine creation cancelled.")
     return ConversationHandler.END
 
 
 async def del_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    logging("/del", update)
     uid = update.message.from_user.id
     rtable.remove(q.id == str(uid))
     await update.message.reply_text(f"Routine Deleted!!")
@@ -315,6 +341,8 @@ async def del_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def show_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    logging("/show", update)
     uid = update.message.from_user.id
     rdata = rtable.search(q.id == str(uid))
 
@@ -330,6 +358,8 @@ async def show_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def next_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    logging("/next", update)
     uid = str(update.message.from_user.id)
     await update.message.reply_html(next_class(uid))
     # await update.message.reply_animation(animation=Animation())
@@ -338,6 +368,7 @@ async def next_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def today_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
+    logging("/today", update)
     uid = update.message.from_user.id
 
     todays_class = get_day_classes(today=True, UID=str(uid))
@@ -353,6 +384,8 @@ async def today_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def tmrw_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    logging("/tmrw", update)
     uid = update.message.from_user.id
 
     todays_class = get_day_classes(today=False, UID=str(uid))
@@ -379,7 +412,7 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def post_init(application: Application) -> None:
     await application.bot.set_my_commands(
         [
-            ("start", "Shows Welcome Message"),
+            # ("start", "Shows Welcome Message"), # Don't Want to Include
             ("new", "Creates New Routine"),
             ("cancel", "Cancels Routine Creation"),
             ("del", "Deletes Saved Routine"),
