@@ -10,14 +10,13 @@ from telegram.ext import (
     ContextTypes,
     ConversationHandler,
 )
-from tinydb import TinyDB, Query
 import prettytable as pt
 from datetime import UTC, timedelta, datetime
-
+import pickle
+import plyvel
 
 # Constant
-DB_PATH: Final = "./Routine.json"
-LOG_PATH: Final = "./Log.json"
+DB_PATH: Final = "./DATABASE_DO_NOT_DELETE"
 
 # BOT_TOKEN
 load_dotenv()
@@ -25,21 +24,14 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 if BOT_TOKEN == None:
     raise "BOT_TOKEN NOT FOUND"
 
-# TinyDB
-# For Query
-q: Final = Query()
+# bytes transformer
+dumper = pickle.dumps
+loader = pickle.loads
 
-# Routine Table and Course Table
-# Structure:
-# {"id": "149523456","crs_code": "CHE101","sec": "9","day": "RA","starts": "08:00AM",
-#  "ends": "09:15AM","room": "SAC402","faculty": "MIO",}
-rtable: Final = TinyDB(DB_PATH).table("ROUTINE")
 
-# {"code": "CHE101","title": "General Chemistry"}
-ctable: Final = TinyDB(DB_PATH).table("COURSE")
+# LevelDB Database
+db = plyvel.DB(DB_PATH, create_if_missing=True)
 
-# Log Table
-ltable: Final = TinyDB(LOG_PATH).table("NAME_ID_CMD")
 
 # Day ShortHand according to RDS
 day_sh = {
@@ -147,20 +139,35 @@ def json_parse(prsd: list[list], uid: str):
         # print(len(r))
         if len(r) != 8:
             continue
-        routine.append(
-            {
-                "id": str(uid),
-                "crs_code": r[0],
-                "sec": r[1],
-                "day": r[3],
-                "starts": r[4],
-                "ends": r[5],
-                "room": r[6],
-                "faculty": r[7],
-            }
-        )
+
+        rdata: dict[str, str] = {
+            "crs_code": r[0],
+            "sec": r[1],
+            "day": r[3],
+            "starts": r[4],
+            "ends": r[5],
+            "room": r[6],
+            "faculty": r[7],
+        }
+
+        if not (
+            rdata["sec"].isnumeric()
+            and len(rdata["day"]) <= 2
+            and len(rdata["starts"]) == 7
+            and len(rdata["ends"]) == 7
+            and (
+                rdata["room"].startswith("NAC")
+                or rdata["room"].startswith("SAC")
+                or rdata["room"].startswith("LIB")
+                or rdata["room"].startswith("AUD")
+            )
+        ):
+            continue
+
+        routine.append(rdata)
         courses.append({"code": r[0], "title": r[2]})
-    return routine, courses
+
+    return uid, routine, courses
 
 
 def get_day_classes(UID: str, today: bool):
@@ -177,8 +184,12 @@ def get_day_classes(UID: str, today: bool):
     sh = day_sh[td]
     pairs = day_pairs[sh]
 
-    classes = rtable.search((q.id == UID) & ((q.day == pairs) | (q.day == sh)))
-    # print("Today: ", len(classes))
+    _bytes = db.get(dumper(UID))
+    if _bytes is None:
+        return []
+
+    classes = [c for c in loader(_bytes) if c["day"] == pairs or c["day"] == sh]
+
     return classes
 
 
@@ -219,15 +230,11 @@ def next_class(uid: str):
 
     tn = time_gmtp6.strftime("%I:%m%p")
 
-    # dev
-    # print(tn)
-    tn = "06:00AM"
-
     exhour = exact_time_hour(tn)
 
     # print("Test time: ", exhour)
 
-    clss = get_day_classes(uid, False)
+    clss = get_day_classes(uid, True)
     if len(clss) == 0:
         return "<b>No Classes Today</b>"
     next_cls = ""
@@ -247,7 +254,7 @@ def next_class(uid: str):
     if next_cls == "":
         return "<b>No More Class Today</b>"
 
-    course_title = ctable.search(q.code == next_cls["crs_code"])[0]["title"]
+    course_title = loader(db.get(dumper(next_cls["crs_code"])))
 
     next_cls_detail = f"""<code>Next Class is After {strf_hour(clssdiff)}  </code>
 <pre>Title:    {course_title}
@@ -262,7 +269,7 @@ Section:  {int(next_cls["sec"]):02}</pre>
 
 def logging(cmmd: str, update: Update):
     tn = datetime.now(UTC) + timedelta(hours=6)
-    ltable.insert(
+    print(
         {
             "Time": tn.strftime("%d/%m/%Y, %I:%m %p"),
             "Name": update.message.from_user.name,
@@ -289,9 +296,12 @@ _If you copied from Phone📱 then chose *__Paste as plain text__* option_
 async def new_cmd_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     logging("/new", update)
-    user_id = update.message.from_user.id
+    user_id = update.message.from_user.id.__str__()
+
     # Limitng 1 Routine Per User
-    if rtable.count(q.id == str(user_id)) != 0:
+    raw_bytes = db.get(dumper(user_id))
+
+    if raw_bytes is not None:
         await update.message.reply_text(f"Delete Saved Routine First!!")
         return ConversationHandler.END
     await update.message.reply_text("Paste the Routine Table:")
@@ -299,8 +309,9 @@ async def new_cmd_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def new_cmd_content(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     routine_content = update.message.text
-    user_id = update.message.from_user.id
+    user_id = update.message.from_user.id.__str__()
 
     # print(routine_content)
 
@@ -308,17 +319,17 @@ async def new_cmd_content(update: Update, context: ContextTypes.DEFAULT_TYPE):
     len_rl = len(rl)
     rlf = [parse_crsec(r) for r in rl if r != ""]
     len_rlf = len(rlf)
-    rdata, cdata = json_parse(rlf, user_id)
+    rid, rdata, cdata = json_parse(rlf, user_id)
 
-    len_table = len(rtable.insert_multiple(rdata))
+    db.put(dumper(rid), dumper(rdata))
     for c in cdata:
-        ctable.upsert(c, q.code == c["code"])
+        db.put(dumper(c["code"]), dumper(c["title"]))
 
     await update.message.reply_markdown_v2(
         f"""📜  *Routine has been saved*
     🌟  Out of *_{len_rl}_* rows
     🌟  *_{len_rlf}_* rows successfully formatted
-    🌟  *_{len_table}_* rows inserted to Database
+    🌟  *_{len(rdata)}_* rows inserted to Database
     """
     )
     return ConversationHandler.END
@@ -334,8 +345,8 @@ async def cancel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def del_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     logging("/del", update)
-    uid = update.message.from_user.id
-    rtable.remove(q.id == str(uid))
+    uid = update.message.from_user.id.__str__()
+    db.delete(dumper(uid))
     await update.message.reply_text(f"Routine Deleted!!")
     return
 
@@ -343,16 +354,18 @@ async def del_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     logging("/show", update)
-    uid = update.message.from_user.id
-    rdata = rtable.search(q.id == str(uid))
+    uid = update.message.from_user.id.__str__()
 
-    if len(rdata) == 0:
+    _bytes = db.get(dumper(uid))
+
+    if _bytes is None:
         await update.message.reply_text(f"No Routine Found For the User")
         return
 
+    result = loader(_bytes)
     await update.message.reply_html(
         f"""<u><b>Your Saved Routine</b></u>
-<pre>{build_table(rdata)}</pre>"""
+<pre>{build_table(result)}</pre>"""
     )
     return
 
@@ -360,7 +373,7 @@ async def show_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def next_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     logging("/next", update)
-    uid = str(update.message.from_user.id)
+    uid = update.message.from_user.id.__str__()
     await update.message.reply_html(next_class(uid))
     # await update.message.reply_animation(animation=Animation())
     return
@@ -369,9 +382,9 @@ async def next_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def today_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     logging("/today", update)
-    uid = update.message.from_user.id
+    uid = update.message.from_user.id.__str__()
 
-    todays_class = get_day_classes(today=True, UID=str(uid))
+    todays_class = get_day_classes(uid, True)
 
     if len(todays_class) != 0:
         await update.message.reply_html(
@@ -386,14 +399,14 @@ async def today_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def tmrw_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     logging("/tmrw", update)
-    uid = update.message.from_user.id
+    uid = update.message.from_user.id.__str__()
 
-    todays_class = get_day_classes(today=False, UID=str(uid))
+    tmrws_class = get_day_classes(uid, False)
 
-    if len(todays_class) != 0:
+    if len(tmrws_class) != 0:
         await update.message.reply_html(
             f"""<u><b>Class List For Tomorrow</b></u>
-<pre>{build_table(todays_class)}</pre>"""
+<pre>{build_table(tmrws_class)}</pre>"""
         )
     else:
         await update.message.reply_markdown_v2("__No Classes Tomorrow__")
@@ -425,29 +438,35 @@ async def post_init(application: Application) -> None:
 
 
 if __name__ == "__main__":
-    print("Starting Telegram Bot ..........")
-    app = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
-    app.add_handler(CommandHandler("start", start_cmd))
 
-    # Multi-State Handler
-    new_conversation = ConversationHandler(
-        entry_points=[CommandHandler("new", new_cmd_entry)],
-        states={
-            1: [MessageHandler(filters.TEXT & ~filters.COMMAND, new_cmd_content)],
-        },
-        fallbacks=[CommandHandler("cancel", cancel_cmd)],
-    )
+    try:
+        print("Starting Telegram Bot ..........")
+        app = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
+        app.add_handler(CommandHandler("start", start_cmd))
 
-    app.add_handler(new_conversation)
-    app.add_handler(CommandHandler("cancel", cancel_cmd))
-    app.add_handler(CommandHandler("del", del_cmd))
-    app.add_handler(CommandHandler("show", show_cmd))
-    app.add_handler(CommandHandler("next", next_cmd))
-    app.add_handler(CommandHandler("today", today_cmd))
-    app.add_handler(CommandHandler("tmrw", tmrw_cmd))
+        # Multi-State Handler
+        new_conversation = ConversationHandler(
+            entry_points=[CommandHandler("new", new_cmd_entry)],
+            states={
+                1: [MessageHandler(filters.TEXT & ~filters.COMMAND, new_cmd_content)],
+            },
+            fallbacks=[CommandHandler("cancel", cancel_cmd)],
+        )
 
-    # /dev for developer
-    app.add_handler(CommandHandler("dev", dev_cmd))
-    app.add_error_handler(error_handler)
+        app.add_handler(new_conversation)
+        app.add_handler(CommandHandler("cancel", cancel_cmd))
+        app.add_handler(CommandHandler("del", del_cmd))
+        app.add_handler(CommandHandler("show", show_cmd))
+        app.add_handler(CommandHandler("next", next_cmd))
+        app.add_handler(CommandHandler("today", today_cmd))
+        app.add_handler(CommandHandler("tmrw", tmrw_cmd))
 
-    app.run_polling(poll_interval=3)
+        # /dev for developer
+        app.add_handler(CommandHandler("dev", dev_cmd))
+        app.add_error_handler(error_handler)
+
+        app.run_polling(poll_interval=3)
+
+    finally:
+        print("\nSTOPPING BOT.....")
+        db.close()
