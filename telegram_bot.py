@@ -236,7 +236,7 @@ def next_class(uid: str):
 
     clss = get_day_classes(uid, True)
     if len(clss) == 0:
-        return "<b>No Classes Today</b>"
+        return "<b>🎉 No Classes Today 🎉</b>"
     next_cls = ""
     clssdiff = 0
     temp = 24.0
@@ -252,17 +252,18 @@ def next_class(uid: str):
 
     # print(next_cls)
     if next_cls == "":
-        return "<b>No More Class Today</b>"
+        return "<b>🎉 No More Class Today 🎉</b>"
 
     course_title = loader(db.get(dumper(next_cls["crs_code"])))
 
     next_cls_detail = f"""<code>Next Class is After {strf_hour(clssdiff)}  </code>
-<pre>Title:    {course_title}
-Code:     {next_cls["crs_code"]}
-Room:     {next_cls["room"]}
-Faculty:  {next_cls["faculty"]}
-Time:     {next_cls["starts"]} - {next_cls["ends"]}
-Section:  {int(next_cls["sec"]):02}</pre>
+<pre>
+Title 📚:    {course_title}
+Code ⌨️:     {next_cls["crs_code"]}
+Room 🏢:     {next_cls["room"]}
+Faculty 👤:  {next_cls["faculty"]}
+Time 🕓:  {next_cls["starts"]} - {next_cls["ends"]}
+Section 🔤:  {int(next_cls["sec"]):02}</pre>
 """
     return next_cls_detail
 
@@ -302,9 +303,9 @@ async def new_cmd_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     raw_bytes = db.get(dumper(user_id))
 
     if raw_bytes is not None:
-        await update.message.reply_text(f"Delete Saved Routine First!!")
+        await update.message.reply_markdown_v2("> 🗑 Delete Saved Routine First\\!")
         return ConversationHandler.END
-    await update.message.reply_text("Paste the Routine Table:")
+    await update.message.reply_markdown_v2("> 📄 Paste the Routine Table")
     return 1
 
 
@@ -326,10 +327,10 @@ async def new_cmd_content(update: Update, context: ContextTypes.DEFAULT_TYPE):
         db.put(dumper(c["code"]), dumper(c["title"]))
 
     await update.message.reply_markdown_v2(
-        f"""📜  *Routine has been saved*
-    🌟  Out of *_{len_rl}_* rows
+        f"""📜  __*Routine has been saved*__
+    ✨  Out of *_{len_rl}_* rows
     🌟  *_{len_rlf}_* rows successfully formatted
-    🌟  *_{len(rdata)}_* rows inserted to Database
+    ✴️  *_{len(rdata)}_* rows inserted to Database
     """
     )
     return ConversationHandler.END
@@ -338,7 +339,7 @@ async def new_cmd_content(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cancel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     logging("/cancel", update)
-    await update.message.reply_text("Routine creation cancelled.")
+    await update.message.reply_markdown_v2("> ❌ *Routine creation cancelled\\.*")
     return ConversationHandler.END
 
 
@@ -347,7 +348,7 @@ async def del_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging("/del", update)
     uid = update.message.from_user.id.__str__()
     db.delete(dumper(uid))
-    await update.message.reply_text(f"Routine Deleted!!")
+    await update.message.reply_markdown_v2(f"> ☠️ *Routine Deleted\\!\\!*")
     return
 
 
@@ -359,7 +360,9 @@ async def show_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _bytes = db.get(dumper(uid))
 
     if _bytes is None:
-        await update.message.reply_text(f"No Routine Found For the User")
+        await update.message.reply_markdown_v2(
+            "🎉 __No Routine Found For the User__ 🎉"
+        )
         return
 
     result = loader(_bytes)
@@ -392,7 +395,7 @@ async def today_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 <pre>{build_table(todays_class)}</pre>"""
         )
     else:
-        await update.message.reply_markdown_v2("**No Classes Today**")
+        await update.message.reply_markdown_v2("🎉 *No Classes Today* 🎉")
     return
 
 
@@ -409,12 +412,13 @@ async def tmrw_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 <pre>{build_table(tmrws_class)}</pre>"""
         )
     else:
-        await update.message.reply_markdown_v2("__No Classes Tomorrow__")
+        await update.message.reply_markdown_v2("🎉 *No Classes Tomorrow* 🎉")
     return
 
 
 async def dev_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_markdown_v2(update.message.text)
+    msg = "\U0001F916 This is a Robot face!"
+    await update.message.reply_html(msg)
     return
 
 
