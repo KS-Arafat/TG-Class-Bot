@@ -66,7 +66,7 @@ But before we run the script, we have to get Bot Token from Telegram
 #### Copy the Token and Paste In `.env` and assign it to `BOT_TOKEN` environment variable like this
 
 ```js
-BOT_TOKEN = "2035864719:abcdeer12378fsd659labJDRSJjhGHDGJ5" 
+BOT_TOKEN=2035864719:abcdeer12378fsd659labJDRSJjhGHDGJ5 
 ``` 
 
 ### Finally Run 
@@ -79,10 +79,7 @@ python telegram_bot.py
 
 ```bash
 docker build -t tg-class-bot . 
-export BOT_TOKEN="2035864719:abcdeer12378fsd659labJDRSJjhGHDGJ5"
-docker run -p 8000:80 \
--e BOT_TOKEN=$BOT_TOKEN \
-tg-class-bot
+docker run -d -p 8000:80 --env-file .env --restart unless-stopped tg-class-bot
 ```
 
 **_NB:_ Might Have To Configure Firewall If You Get Timeout Error**
