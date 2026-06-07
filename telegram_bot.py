@@ -284,13 +284,11 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     logging("/start", update)
     await update.message.reply_video("./TG_Bot_Demo.mp4")
-    await update.message.reply_markdown_v2(
-        """*__Welcome to NSU Class Notifier Bot__*
+    await update.message.reply_markdown_v2("""*__Welcome to NSU Class Notifier Bot__*
 _Copy Routine From RDS Attendance By Selecting the Whole Table_
 _Paste It after `/new` Command_
 _If you copied from Phone📱 then chose *__Paste as plain text__* option_
-"""
-    )
+""")
     return
 
 
@@ -326,13 +324,11 @@ async def new_cmd_content(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for c in cdata:
         db.put(dumper(c["code"]), dumper(c["title"]))
 
-    await update.message.reply_markdown_v2(
-        f"""📜  __*Routine has been saved*__
+    await update.message.reply_markdown_v2(f"""📜  __*Routine has been saved*__
     ✨  Out of *_{len_rl}_* rows
     🌟  *_{len_rlf}_* rows successfully formatted
     ✴️  *_{len(rdata)}_* rows inserted to Database
-    """
-    )
+    """)
     return ConversationHandler.END
 
 
@@ -366,10 +362,8 @@ async def show_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     result = loader(_bytes)
-    await update.message.reply_html(
-        f"""<u><b>Your Saved Routine</b></u>
-<pre>{build_table(result)}</pre>"""
-    )
+    await update.message.reply_html(f"""<u><b>Your Saved Routine</b></u>
+<pre>{build_table(result)}</pre>""")
     return
 
 
@@ -390,10 +384,8 @@ async def today_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     todays_class = get_day_classes(uid, True)
 
     if len(todays_class) != 0:
-        await update.message.reply_html(
-            f"""<u><b>Class List For Today</b></u>
-<pre>{build_table(todays_class)}</pre>"""
-        )
+        await update.message.reply_html(f"""<u><b>Class List For Today</b></u>
+<pre>{build_table(todays_class)}</pre>""")
     else:
         await update.message.reply_markdown_v2("🎉 *No Classes Today* 🎉")
     return
@@ -407,17 +399,15 @@ async def tmrw_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tmrws_class = get_day_classes(uid, False)
 
     if len(tmrws_class) != 0:
-        await update.message.reply_html(
-            f"""<u><b>Class List For Tomorrow</b></u>
-<pre>{build_table(tmrws_class)}</pre>"""
-        )
+        await update.message.reply_html(f"""<u><b>Class List For Tomorrow</b></u>
+<pre>{build_table(tmrws_class)}</pre>""")
     else:
         await update.message.reply_markdown_v2("🎉 *No Classes Tomorrow* 🎉")
     return
 
 
 async def dev_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    msg = "\U0001F916 This is a Robot face!"
+    msg = "\U0001f916 This is a Robot face!"
     await update.message.reply_html(msg)
     return
 
@@ -441,8 +431,7 @@ async def post_init(application: Application) -> None:
     )
 
 
-if __name__ == "__main__":
-
+def TG_Class_Bot():
     try:
         print("Starting Telegram Bot ..........")
         app = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
@@ -470,6 +459,9 @@ if __name__ == "__main__":
         app.add_error_handler(error_handler)
 
         app.run_polling(poll_interval=3)
+
+    except Exception as e:
+        print("Error: ", e)
 
     finally:
         print("\nSTOPPING BOT.....")

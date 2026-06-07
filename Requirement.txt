@@ -1,4 +1,4 @@
 prettytable==3.11.0
 python-dotenv==1.0.1
-python-telegram-bot==21.4
+python-telegram-bot==22.7
 plyvel==1.5.1

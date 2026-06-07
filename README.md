@@ -1,12 +1,14 @@
-# Telegram Bot For Class Routine 
+# Telegram Bot For Class Routine
 
 ### ***Intro***
+
 ---
 This is a Telegram Bot written <img src="https://img.shields.io/badge/Python-FFD43B?style=for-the-badge&logo=python&logoColor=blue" height=25 />
 
 Using [Python-telegram-bot](https://github.com/python-telegram-bot) library.
 
 ### ***Features:***
+
 ---
 
 - Copy/Paste Routine and Bot will parse it 
@@ -15,8 +17,8 @@ Using [Python-telegram-bot](https://github.com/python-telegram-bot) library.
 
 - Provides Class Info with respect to current time
 
-
 ### ***Commands:***
+
 ---
 
 `Command`| _Description_ 
@@ -30,8 +32,8 @@ Using [Python-telegram-bot](https://github.com/python-telegram-bot) library.
 `/today` | Shows All the Classes for That Day
 `/tmrw` | Shows All the Classes for the Next Day
 
-
 ### ***Deploy***
+
 ---
 `git clone https://github.com/KS-Arafat/Class_Routine_TG_Bot.git` 
 
@@ -48,6 +50,7 @@ pip install -r Requirement.txt
 But before we run the script, we have to get Bot Token from Telegram
 
 ### ***Obtain Your Bot Token***
+
 ---
 
 - In this context, a token is a string that authenticates your bot (not your account) on the bot API. Each bot has a unique token which can also be revoked at any time via **@BotFather**.
@@ -56,12 +59,12 @@ But before we run the script, we have to get Bot Token from Telegram
 
 - Your token will look something like this:
 
-        2035864719:abcdeer12378fsd659labJDRSJjhGHDGJ5
-
+2035864719:abcdeer12378fsd659labJDRSJjhGHDGJ5
 
 ⚠️ **Warning: Make sure to save your token in a secure place, treat it like a password and don't share it with anyone.**
 
 #### Copy the Token and Paste In `.env` and assign it to `BOT_TOKEN` environment variable like this
+
 ```js
 BOT_TOKEN = "2035864719:abcdeer12378fsd659labJDRSJjhGHDGJ5" 
 ``` 
@@ -70,6 +73,16 @@ BOT_TOKEN = "2035864719:abcdeer12378fsd659labJDRSJjhGHDGJ5"
 
 ```bash
 python telegram_bot.py
+```
+
+**or**
+
+```bash
+docker build -t tg-class-bot . 
+export BOT_TOKEN="2035864719:abcdeer12378fsd659labJDRSJjhGHDGJ5"
+docker run -p 8000:80 \
+-e BOT_TOKEN=$BOT_TOKEN \
+tg-class-bot
 ```
 
 **_NB:_ Might Have To Configure Firewall If You Get Timeout Error**
