@@ -228,7 +228,7 @@ def next_class(uid: str):
 
     time_gmtp6 = datetime.now(UTC) + timedelta(hours=6)
 
-    tn = time_gmtp6.strftime("%I:%m%p")
+    tn = time_gmtp6.strftime("%I:%M%p")
 
     exhour = exact_time_hour(tn)
 
@@ -258,12 +258,12 @@ def next_class(uid: str):
 
     next_cls_detail = f"""<code>Next Class is After {strf_hour(clssdiff)}  </code>
 <pre>
-Title 📚:    {course_title}
-Code ⌨️:     {next_cls["crs_code"]}
-Room 🏢:     {next_cls["room"]}
-Faculty 👤:  {next_cls["faculty"]}
-Time 🕓:  {next_cls["starts"]} - {next_cls["ends"]}
-Section 🔤:  {int(next_cls["sec"]):02}</pre>
+Title   📚  :   {course_title}
+Code    ⌨️  :   {next_cls["crs_code"]}
+Room    🏢  :   {next_cls["room"]}
+Faculty 👤  :   {next_cls["faculty"]}
+Time    🕓  :   {next_cls["starts"]} - {next_cls["ends"]}
+Section 🔤  :   {int(next_cls["sec"]):02}</pre>
 """
     return next_cls_detail
 
@@ -307,9 +307,14 @@ async def new_cmd_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return 1
 
 
-async def new_cmd_content(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def new_cmd_content(update: Update, context: ContextTypes.DEFAULT_TYPE, override_msg: str = ""):
 
-    routine_content = update.message.text
+    routine_content = ""
+    if len(override_msg) != 0:
+        routine_content = override_msg
+    else: 
+        routine_content = update.message.text
+    
     user_id = update.message.from_user.id.__str__()
 
     # print(routine_content)
@@ -407,8 +412,34 @@ async def tmrw_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def dev_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    msg = "\U0001f916 This is a Robot face!"
-    await update.message.reply_html(msg)
+
+    await update.message.reply_html("\U0001f916 Creating Dummy Data for Testing \U0001f916\n\n")
+    dummy_routine = '''
+MAT361  1  Probability and Statistics  MW  08:00 AM  09:30 AM  SAC208  AdS1
+MAT361  2  Probability and Statistics  MW  11:20 AM  12:50 PM  SAC208  AdS1
+MAT361  3  Probability and Statistics  MW  02:40 PM  04:10 PM  SAC208  AdS1
+MAT361  4  Probability and Statistics  MW  06:00 PM  07:30 PM  SAC208  AdS1
+MAT361  5  Probability and Statistics  MW  08:00 PM  09:30 PM  SAC208  AdS1
+MAT361  6  Probability and Statistics  MW  10:00 PM  11:30 PM  SAC208  AdS1
+MAT361  7  Probability and Statistics  MW  12:00 AM  01.30 AM  SAC208  AdS1
+MAT361  1  Probability and Statistics  RA  08:00 AM  09:30 AM  SAC208  AdS1
+MAT361  2  Probability and Statistics  RA  11:20 AM  12:50 PM  SAC208  AdS1
+MAT361  3  Probability and Statistics  RA  02:40 PM  04:10 PM  SAC208  AdS1
+MAT361  4  Probability and Statistics  RA  06:00 PM  07:30 PM  SAC208  AdS1
+MAT361  5  Probability and Statistics  RA  08:00 PM  09:30 PM  SAC208  AdS1
+MAT361  6  Probability and Statistics  RA  10:00 PM  11:30 PM  SAC208  AdS1
+MAT361  7  Probability and Statistics  RA  12:00 AM  01.30 AM  SAC208  AdS1
+MAT361  1  Probability and Statistics  ST  08:00 AM  09:30 AM  SAC208  AdS1
+MAT361  2  Probability and Statistics  ST  11:20 AM  12:50 PM  SAC208  AdS1
+MAT361  3  Probability and Statistics  ST  02:40 PM  04:10 PM  SAC208  AdS1
+MAT361  4  Probability and Statistics  ST  06:00 PM  07:30 PM  SAC208  AdS1
+MAT361  5  Probability and Statistics  ST  08:00 PM  09:30 PM  SAC208  AdS1
+MAT361  6  Probability and Statistics  ST  10:00 PM  11:30 PM  SAC208  AdS1
+MAT361  7  Probability and Statistics  ST  12:00 AM  01.30 AM  SAC208  AdS1
+'''
+    await del_cmd(update, context)
+    await new_cmd_content(update, context, dummy_routine)
+    await update.message.reply_html("\U0001f916 Dummy Routine Created \U0001f916\n\n")
     return
 
 
