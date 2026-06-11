@@ -1,9 +1,11 @@
 # Telegram Bot For Class Routine
 
+##
+
 ### ***Intro***
 
 ---
-This is a Telegram Bot written <img src="https://img.shields.io/badge/Python-FFD43B?style=for-the-badge&logo=python&logoColor=blue" height=25 />
+This is a Telegram Bot written <img src="https://img.shields.io/badge/Python-FFD43B?style=for-the-badge&logo=python&logoColor=blue" height=25 alt="" />
 
 Using [Python-telegram-bot](https://github.com/python-telegram-bot) library.
 
@@ -11,7 +13,7 @@ Using [Python-telegram-bot](https://github.com/python-telegram-bot) library.
 
 ---
 
-- Copy/Paste Routine and Bot will parse it 
+- Copy/Paste Routine and Bot will parse it
 
 - Quick Query For Class info on the go
 
@@ -21,23 +23,23 @@ Using [Python-telegram-bot](https://github.com/python-telegram-bot) library.
 
 ---
 
-`Command`| _Description_ 
--|-
-`/start` |   Shows Welcome Message 
-`/new`| Creates New Routine
-`/cancel` | Cancels Routine Creation
-`/del`| Deletes Saved Routine
-`/show` | Shows Saved Routine
-`/next` | Shows Next Class wrt to Current Time
-`/today` | Shows All the Classes for That Day
-`/tmrw` | Shows All the Classes for the Next Day
+|`Command` | _Description                           |
+|--------- | -------------------------------------- |
+|`/start`  |   Shows Welcome Message                |
+|`/new`    | Creates New Routine                    |
+|`/cancel` | Cancels Routine Creation               |
+|`/del`    | Deletes Saved Routine                  |
+|`/show`   | Shows Saved Routine                    |
+|`/next`   | Shows Next Class wrt to Current Time   |
+|`/today`  | Shows All the Classes for That Day     |
+|`/tmrw`   | Shows All the Classes for the Next Day |
 
 ### ***Deploy***
 
 ---
-`git clone https://github.com/KS-Arafat/Class_Routine_TG_Bot.git` 
+`git clone https://github.com/KS-Arafat/Class_Routine_TG_Bot.git`
 
-__or__ 
+#### **or**
 
 Download the [Zip](https://github.com/KS-Arafat/Class_Routine_TG_Bot/archive/refs/heads/main.zip) & [Unzip](https://www.7-zip.org/)
 
@@ -67,19 +69,43 @@ But before we run the script, we have to get Bot Token from Telegram
 
 ```js
 BOT_TOKEN=2035864719:abcdeer12378fsd659labJDRSJjhGHDGJ5 
-``` 
+```
 
-### Finally Run 
+### Finally Run
 
 ```bash
 python telegram_bot.py
 ```
 
-**or**
+### Deploy with docker
 
 ```bash
 docker build -t tg-class-bot . 
 docker run -d -p 8000:80 --env-file .env --restart unless-stopped tg-class-bot
 ```
 
-**_NB:_ Might Have To Configure Firewall If You Get Timeout Error**
+### Docker Compose
+
+Create or update `.env` with your bot token:
+
+```bash
+echo 'BOT_TOKEN=YOUR_BOT_TOKEN_HERE' > .env
+```
+
+Start the bot with Docker Compose:
+
+```bash
+docker compose up -d --build
+```
+
+This will build the image and run the container. The LevelDB database folder `DATABASE_DO_NOT_DELETE` is mounted from the host, so your data is persisted outside the container.
+
+Stop the bot:
+
+```bash
+docker compose down
+```
+
+If your system uses the legacy compose command, use `docker-compose` instead.
+
+***NB:* Might Have To Configure Firewall If You Get Timeout Error**
