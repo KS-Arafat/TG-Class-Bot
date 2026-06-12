@@ -1,13 +1,20 @@
 # Telegram Bot For Class Routine
 
+[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python)](https://www.python.org/)
+[![Docker](https://img.shields.io/badge/docker-supported-blue?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Docker Compose](https://img.shields.io/badge/docker%20compose-supported-blue?logo=docker&)](https://docs.docker.com/compose/)
+[![python-telegram-bot](https://img.shields.io/pypi/v/python-telegram-bot?label=python-telegram-bot&style=flat-square&logo=telegram)](https://pypi.org/project/python-telegram-bot/)
+[![python-dotenv](https://img.shields.io/pypi/v/python-dotenv?label=python-dotenv&style=flat-square&logo=dotenv)](https://pypi.org/project/python-dotenv/)
+[![prettytable](https://img.shields.io/pypi/v/prettytable?label=prettytable&style=flat-square)](https://pypi.org/project/prettytable/)
+[![lmdb](https://img.shields.io/pypi/v/lmdb?label=lmdb&style=flat-square)](https://pypi.org/project/lmdb/)
+[![uv](https://img.shields.io/pypi/v/uv?label=uv&style=flat-square&logo=uv)](https://pypi.org/project/uv/)
+
 ##
 
 ### ***Intro***
 
 ---
-This is a Telegram Bot written <img src="https://img.shields.io/badge/Python-FFD43B?style=for-the-badge&logo=python&logoColor=blue" height=25 alt="" />
-
-Using [Python-telegram-bot](https://github.com/python-telegram-bot) library.
+This is a Telegram Bot written in Python as NSU Class Reminder using [Python-telegram-bot](https://github.com/python-telegram-bot) library.
 
 ### ***Features:***
 
