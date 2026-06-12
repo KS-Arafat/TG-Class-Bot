@@ -6,7 +6,7 @@ WORKDIR /app
 # and clean apt caches to keep the image small.
 RUN apt-get update \
 	&& apt-get upgrade -y \
-	&& apt-get install -y --no-install-recommends ca-certificates g++ libleveldb-dev \
+	&& apt-get install -y --no-install-recommends ca-certificates \
 	&& rm -rf /var/lib/apt/lists/*
 
 # Ensure pip is up-to-date and install dependencies without caching

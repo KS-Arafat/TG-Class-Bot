@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "plyvel==1.5.1",
+    "lmdb>=2.2.1",
     "prettytable==3.17.0",
     "python-dotenv==1.2.2",
     "python-telegram-bot==22.7",

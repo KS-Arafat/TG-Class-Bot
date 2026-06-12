@@ -13,7 +13,7 @@ from telegram.ext import (
 import prettytable as pt
 from datetime import UTC, timedelta, datetime
 import pickle
-import plyvel
+import lmdb
 
 # Constant
 DB_PATH: Final = "./DATABASE_DO_NOT_DELETE"
@@ -28,10 +28,11 @@ if BOT_TOKEN == None:
 dumper = pickle.dumps
 loader = pickle.loads
 
+# Lightning Memory-Mapped Database
+env = lmdb.open(DB_PATH, map_size=(10**8))
 
-# LevelDB Database
-db = plyvel.DB(DB_PATH, create_if_missing=True)
-
+# Read TXN
+rtxn = env.begin(write=False)
 
 # Day ShortHand according to RDS
 day_sh = {
@@ -47,6 +48,40 @@ day_sh = {
 day_pairs = {"S": "ST", "T": "ST", "M": "MW", "W": "MW", "R": "RA", "A": "RA", "F": "F"}
 
 ptable = pt.PrettyTable(["Code", "Sec", "Day", "Starts", "Room", "Facu"])
+
+
+def logging(cmmd: str, update: Update = None, flush=False):
+
+    if not hasattr(logging, "_buffer"):
+        logging._buffer = []
+    tn = datetime.now(UTC) + timedelta(hours=6)
+
+    if not flush:
+        log = {
+            "Time": tn.strftime("%d/%m/%Y, %I:%M %p"),
+            "Name": update.message.from_user.name,
+            "ID": update.message.from_user.id,
+            "CMD": cmmd,
+        }
+        print(log)
+        logging._buffer.append(log)
+    else:
+        logging._buffer.append(cmmd + tn.strftime("%d/%m/%Y, %I:%M %p"))
+
+    if len(logging._buffer) >= 3 or flush:
+        with open(
+            DB_PATH + f"/BOT_{tn.strftime('%d-%m-%Y')}.log", "a", encoding="utf-8"
+        ) as f:
+            f.write("\n".join(str(item) for item in logging._buffer) + "\n")
+
+        logging._buffer.clear()
+
+
+# Refresh rtxn
+def refresh_rtxn(env):
+    global rtxn
+    rtxn.abort()
+    rtxn = env.begin(write=False)
 
 
 # Parse Raw string of rds Routine Data and make it list usable
@@ -184,7 +219,7 @@ def get_day_classes(UID: str, today: bool):
     sh = day_sh[td]
     pairs = day_pairs[sh]
 
-    _bytes = db.get(dumper(UID))
+    _bytes = rtxn.get(dumper(UID))
     if _bytes is None:
         return []
 
@@ -254,7 +289,7 @@ def next_class(uid: str):
     if next_cls == "":
         return "<b>🎉 No More Class Today 🎉</b>"
 
-    course_title = loader(db.get(dumper(next_cls["crs_code"])))
+    course_title = loader(rtxn.get(dumper(next_cls["crs_code"])))
 
     next_cls_detail = f"""<code>Next Class is After {strf_hour(clssdiff)}  </code>
 <pre>
@@ -266,18 +301,6 @@ Time    🕓  :   {next_cls["starts"]} - {next_cls["ends"]}
 Section 🔤  :   {int(next_cls["sec"]):02}</pre>
 """
     return next_cls_detail
-
-
-def logging(cmmd: str, update: Update):
-    tn = datetime.now(UTC) + timedelta(hours=6)
-    print(
-        {
-            "Time": tn.strftime("%d/%m/%Y, %I:%m %p"),
-            "Name": update.message.from_user.name,
-            "ID": update.message.from_user.id,
-            "CMD": cmmd,
-        }
-    )
 
 
 async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -298,7 +321,7 @@ async def new_cmd_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id.__str__()
 
     # Limitng 1 Routine Per User
-    raw_bytes = db.get(dumper(user_id))
+    raw_bytes = rtxn.get(dumper(user_id))
 
     if raw_bytes is not None:
         await update.message.reply_markdown_v2("> 🗑 Delete Saved Routine First\\!")
@@ -307,14 +330,16 @@ async def new_cmd_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return 1
 
 
-async def new_cmd_content(update: Update, context: ContextTypes.DEFAULT_TYPE, override_msg: str = ""):
+async def new_cmd_content(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, override_msg: str = ""
+):
 
     routine_content = ""
     if len(override_msg) != 0:
         routine_content = override_msg
-    else: 
+    else:
         routine_content = update.message.text
-    
+
     user_id = update.message.from_user.id.__str__()
 
     # print(routine_content)
@@ -325,10 +350,12 @@ async def new_cmd_content(update: Update, context: ContextTypes.DEFAULT_TYPE, ov
     len_rlf = len(rlf)
     rid, rdata, cdata = json_parse(rlf, user_id)
 
-    db.put(dumper(rid), dumper(rdata))
-    for c in cdata:
-        db.put(dumper(c["code"]), dumper(c["title"]))
+    with env.begin(write=True) as txn:
+        txn.put(dumper(rid), dumper(rdata))
+        for c in cdata:
+            txn.put(dumper(c["code"]), dumper(c["title"]))
 
+    refresh_rtxn(env)
     await update.message.reply_markdown_v2(f"""📜  __*Routine has been saved*__
     ✨  Out of *_{len_rl}_* rows
     🌟  *_{len_rlf}_* rows successfully formatted
@@ -348,7 +375,10 @@ async def del_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     logging("/del", update)
     uid = update.message.from_user.id.__str__()
-    db.delete(dumper(uid))
+    with env.begin(write=True) as wtxn:
+        wtxn.delete(dumper(uid))
+
+    refresh_rtxn(env)
     await update.message.reply_markdown_v2(f"> ☠️ *Routine Deleted\\!\\!*")
     return
 
@@ -358,7 +388,7 @@ async def show_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging("/show", update)
     uid = update.message.from_user.id.__str__()
 
-    _bytes = db.get(dumper(uid))
+    _bytes = rtxn.get(dumper(uid))
 
     if _bytes is None:
         await update.message.reply_markdown_v2(
@@ -413,8 +443,11 @@ async def tmrw_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def dev_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    await update.message.reply_html("\U0001f916 Creating Dummy Data for Testing \U0001f916\n\n")
-    dummy_routine = '''
+    logging("/dev", update)
+    await update.message.reply_html(
+        "\U0001f916 Creating Dummy Data for Testing \U0001f916\n\n"
+    )
+    dummy_routine = """
 MAT361  1  Probability and Statistics  MW  08:00 AM  09:30 AM  SAC208  AdS1
 MAT361  2  Probability and Statistics  MW  11:20 AM  12:50 PM  SAC208  AdS1
 MAT361  3  Probability and Statistics  MW  02:40 PM  04:10 PM  SAC208  AdS1
@@ -436,7 +469,7 @@ MAT361  4  Probability and Statistics  ST  06:00 PM  07:30 PM  SAC208  AdS1
 MAT361  5  Probability and Statistics  ST  08:00 PM  09:30 PM  SAC208  AdS1
 MAT361  6  Probability and Statistics  ST  10:00 PM  11:30 PM  SAC208  AdS1
 MAT361  7  Probability and Statistics  ST  12:00 AM  01.30 AM  SAC208  AdS1
-'''
+"""
     await del_cmd(update, context)
     await new_cmd_content(update, context, dummy_routine)
     await update.message.reply_html("\U0001f916 Dummy Routine Created \U0001f916\n\n")
@@ -465,6 +498,7 @@ async def post_init(application: Application) -> None:
 def TG_Class_Bot():
     try:
         print("Starting Telegram Bot ..........")
+        logging("Started Bot At: ", flush=True)
         app = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
         app.add_handler(CommandHandler("start", start_cmd))
 
@@ -496,4 +530,6 @@ def TG_Class_Bot():
 
     finally:
         print("\nSTOPPING BOT.....")
-        db.close()
+        logging("Stopped Bot At: ", flush=True)
+        rtxn.abort()
+        env.close()
