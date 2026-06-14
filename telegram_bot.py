@@ -246,11 +246,20 @@ def build_table(rtable):
 
 
 # Converting 12 hour format to 24 hour format
+# def exact_time_hour(tn: str):
+ #   h, m = [int(x) for x in tn[:5].split(":")]
+  #  et = h + (m / 60) + (12 if tn[5:] == "PM" else 0)
+  #  return et if et < 24 else et - 12
 def exact_time_hour(tn: str):
     h, m = [int(x) for x in tn[:5].split(":")]
-    et = h + (m / 60) + (12 if tn[5:] == "PM" else 0)
-    return et if et < 24 else et - 12
-
+    is_pm = tn[5:] == "PM"
+    
+    if h == 12:
+        h = 12 if is_pm else 0
+    elif is_pm:
+        h += 12
+    
+    return h + (m / 60)
 
 # String format of hour
 def strf_hour(hours: float):
