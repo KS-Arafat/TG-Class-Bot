@@ -2,3 +2,4 @@
 *.ipynb
 DATABASE_DO_NOT_DELETE
 __pycache__
+test/

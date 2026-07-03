@@ -14,6 +14,7 @@ import prettytable as pt
 from datetime import UTC, timedelta, datetime
 import pickle
 import lmdb
+from RichMessage import SendRichHTMLTable
 
 # Constant
 DB_PATH: Final = "./DATABASE_DO_NOT_DELETE"
@@ -402,8 +403,12 @@ async def show_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     result = loader(_bytes)
-    await update.message.reply_html(f"""<u><b>Your Saved Routine</b></u>
-<pre>{build_table(result)}</pre>""")
+    await SendRichHTMLTable(
+        update,
+        context,
+        f"""<pre>Your Saved Routine</pre>
+    {build_table(result).get_html_string()}""",
+    )
     return
 
 
@@ -424,10 +429,18 @@ async def today_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     todays_class = get_day_classes(uid, True)
 
     if len(todays_class) != 0:
-        await update.message.reply_html(f"""<u><b>Class List For Today</b></u>
-<pre>{build_table(todays_class)}</pre>""")
+        await SendRichHTMLTable(
+            update,
+            context,
+            f"""
+<pre> Class List For Today </pre>
+{build_table(todays_class).get_html_string()}
+""",
+        )
     else:
-        await update.message.reply_markdown_v2("🎉 *No Classes Today* 🎉")
+        await SendRichHTMLTable(
+            update, context, "<h1>🎉 <b>No Classes Today</b> 🎉</h1>"
+        )
     return
 
 
@@ -439,10 +452,18 @@ async def tmrw_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tmrws_class = get_day_classes(uid, False)
 
     if len(tmrws_class) != 0:
-        await update.message.reply_html(f"""<u><b>Class List For Tomorrow</b></u>
-<pre>{build_table(tmrws_class)}</pre>""")
+        await SendRichHTMLTable(
+            update,
+            context,
+            f"""
+<pre> Class List For Tomorrow </pre>
+{build_table(tmrws_class).get_html_string()}
+""",
+        )
     else:
-        await update.message.reply_markdown_v2("🎉 *No Classes Tomorrow* 🎉")
+        await SendRichHTMLTable(
+            update, context, "<h1>🎉 <b>No Classes Today</b> 🎉</h1>"
+        )
     return
 
 
