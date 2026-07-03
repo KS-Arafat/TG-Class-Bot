@@ -17,6 +17,6 @@ COPY pyproject.toml uv.lock ./
 
 RUN uv sync --frozen --no-dev
 
-COPY main.py telegram_bot.py TG_Bot_Demo.mp4 ./
+COPY main.py telegram_bot.py RichMessage.py TG_Bot_Demo.mp4 ./
 
 CMD [ "uv", "run", "main.py" ]
