@@ -8,5 +8,5 @@ services:
       - .env
     volumes:
       - ./DATABASE_DO_NOT_DELETE:/app/DATABASE_DO_NOT_DELETE
-    restart: unless-stopped
+    restart: on-failure:3
     command: ["uv", "run", "main.py"]

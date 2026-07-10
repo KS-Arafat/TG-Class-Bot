@@ -1,7 +1,7 @@
 from typing import Final
 import os
 from dotenv import load_dotenv
-from telegram import Update, Animation
+from telegram import Update
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -14,16 +14,11 @@ import prettytable as pt
 from datetime import UTC, timedelta, datetime
 import pickle
 import lmdb
-from RichMessage import SendRichHTMLTable
+from utils.RichMessage import SendRichHTML, SendRichMARKDOWN
 
 # Constant
 DB_PATH: Final = "./DATABASE_DO_NOT_DELETE"
 
-# BOT_TOKEN
-load_dotenv()
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-if BOT_TOKEN == None:
-    raise "BOT_TOKEN NOT FOUND"
 
 # bytes transformer
 dumper = pickle.dumps
@@ -297,14 +292,15 @@ def next_class(uid: str):
 
     course_title = loader(rtxn.get(dumper(next_cls["crs_code"])))
 
-    next_cls_detail = f"""<code>Next Class is After {strf_hour(clssdiff)}  </code>
-<pre>
-Title   📚  :   {course_title}
-Code    ⌨️  :   {next_cls["crs_code"]}
-Room    🏢  :   {next_cls["room"]}
-Faculty 👤  :   {next_cls["faculty"]}
-Time    🕓  :   {next_cls["starts"]} - {next_cls["ends"]}
-Section 🔤  :   {int(next_cls["sec"]):02}</pre>
+    next_cls_detail = f"""
+# ⏳ Next Class ⏳
+#### {next_cls["crs_code"]} 📚 {course_title}
+> Begins in {strf_hour(clssdiff)}
+|:-----------|----------:|
+| Room    🏢  |   {next_cls["room"]}|
+| Faculty 👤  |   {next_cls["faculty"]}|
+| Time    🕓  |   {next_cls["starts"]} - {next_cls["ends"]}|
+| Section 🔤  |   {int(next_cls["sec"]):02}</pre>|
 """
     return next_cls_detail
 
@@ -403,11 +399,13 @@ async def show_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     result = loader(_bytes)
-    await SendRichHTMLTable(
+    await SendRichHTML(
         update,
         context,
-        f"""<pre>Your Saved Routine</pre>
-    {build_table(result).get_html_string()}""",
+        f"""<blockquote><h1>Your Saved Routine</h1></blockquote>
+    {build_table(result).get_html_string().replace("<table>", "<table bordered striped>").replace(
+                "<td>", '<td align="center">'
+            )}""",
     )
     return
 
@@ -416,8 +414,8 @@ async def next_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     logging("/next", update)
     uid = update.message.from_user.id.__str__()
-    await update.message.reply_html(next_class(uid))
-    # await update.message.reply_animation(animation=Animation())
+    # await update.message.reply_html(next_class(uid))
+    await SendRichMARKDOWN(update, context, next_class(uid))
     return
 
 
@@ -429,17 +427,21 @@ async def today_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     todays_class = get_day_classes(uid, True)
 
     if len(todays_class) != 0:
-        await SendRichHTMLTable(
+        await SendRichHTML(
             update,
             context,
             f"""
-<pre> Class List For Today </pre>
-{build_table(todays_class).get_html_string()}
+<blockquote><h1> Class List For Today </h1></blockquote>
+{build_table(todays_class).get_html_string().replace("<table>", "<table bordered striped>").replace(
+                "<td>", '<td align="center">'
+            )}
 """,
         )
     else:
-        await SendRichHTMLTable(
-            update, context, "<h1>🎉 <b>No Classes Today</b> 🎉</h1>"
+        await SendRichHTML(
+            update,
+            context,
+            "<blockquote><h1>🎉 No Classes Today 🎉</h1></blockquote>",
         )
     return
 
@@ -452,17 +454,21 @@ async def tmrw_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tmrws_class = get_day_classes(uid, False)
 
     if len(tmrws_class) != 0:
-        await SendRichHTMLTable(
+        await SendRichHTML(
             update,
             context,
             f"""
-<pre> Class List For Tomorrow </pre>
-{build_table(tmrws_class).get_html_string()}
+<blockquote><h1>Class List For Tomorrow </h1></blockquote>
+{build_table(tmrws_class).get_html_string().replace("<table>", "<table bordered striped>").replace(
+                "<td>", '<td align="center">'
+            )}
 """,
         )
     else:
-        await SendRichHTMLTable(
-            update, context, "<h1>🎉 <b>No Classes Today</b> 🎉</h1>"
+        await SendRichHTML(
+            update,
+            context,
+            "<blockquote><h1>🎉 <b>No Classes Tomomrrow</b> 🎉</h1></blockquote>",
         )
     return
 
@@ -521,9 +527,17 @@ async def post_init(application: Application) -> None:
     )
 
 
-def TG_Class_Bot():
+def TG_Class_Bot(Prod=False):
     try:
-        print("Starting Telegram Bot ..........")
+        # BOT_TOKEN
+        load_dotenv()
+        BOT_TOKEN = os.getenv("BOT_TOKEN") if Prod else os.getenv("BOT_TOKEN_DEV")
+        if BOT_TOKEN == None:
+            raise "BOT_TOKEN NOT FOUND"
+
+        print(
+            f"Starting Telegram Bot {"PRODUCTION" if Prod else "DEVELOPMENT"} .........."
+        )
         logging("Started Bot At: ", flush=True)
         app = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
         app.add_handler(CommandHandler("start", start_cmd))
@@ -552,7 +566,8 @@ def TG_Class_Bot():
         app.run_polling(poll_interval=3)
 
     except Exception as e:
-        print("Error: ", e)
+        print("Error: ", e.__str__())
+        logging(f"Error Occured\t{e.__str__()}\tAt: ", flush=True)
 
     finally:
         print("\nSTOPPING BOT.....")
