@@ -21,4 +21,4 @@ COPY main.py ./
 
 COPY utils/ ./utils/
 
-CMD [ "uv", "run", "main.py" ]
+CMD [ "uv", "run", "main.py", "prod" ]
