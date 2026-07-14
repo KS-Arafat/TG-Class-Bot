@@ -296,7 +296,9 @@ def next_class(uid: str):
 # ⏳ Next Class ⏳
 #### {next_cls["crs_code"]} 📚 {course_title}
 > Begins in {strf_hour(clssdiff)}
-|:-----------|----------:|
+
+|-------------|----------|
+|:------------|---------:|
 | Room    🏢  |   {next_cls["room"]}|
 | Faculty 👤  |   {next_cls["faculty"]}|
 | Time    🕓  |   {next_cls["starts"]} - {next_cls["ends"]}|
